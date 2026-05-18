@@ -2,3 +2,9 @@ Screenshots/
 temporary screenshots/
 .claude/
 .DS_Store
+node_modules/
+server/node_modules/
+client/node_modules/
+server/relive.db
+server/.env
+# client/dist/ — intentionally NOT ignored so Railway can serve it without a build step
