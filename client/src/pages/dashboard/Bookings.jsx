@@ -10,6 +10,7 @@ const STATUS_COLORS = {
   Completed: 'bg-green-100 text-green-800 border-green-200',
   Cancelled: 'bg-red-100 text-red-800 border-red-200',
 };
+const HEARD_ABOUT_OPTIONS = ['Google', 'Instagram', 'Facebook', 'Nextdoor', 'Word of mouth', 'Driving by', 'Other'];
 
 function fmt(d) {
   if (!d) return '—';
@@ -21,6 +22,49 @@ function fmtTime(t) {
   const hour = parseInt(h);
   return `${hour > 12 ? hour - 12 : hour || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
 }
+function smsBody(b) {
+  return encodeURIComponent(
+    `Hey ${b.client_name?.split(' ')[0] || 'there'}, just a reminder you have a detail scheduled for ${fmt(b.date)}${b.time ? ` at ${fmtTime(b.time)}` : ''}. See you then! – Relive Mobile Detailing`
+  );
+}
+
+function Checklist({ bookingId }) {
+  const [items, setItems] = useState(null);
+  const toast = useToast();
+
+  useEffect(() => {
+    bookings.checklist(bookingId).then(setItems).catch(e => toast(e.message, 'error'));
+  }, [bookingId]);
+
+  async function toggle(item) {
+    try {
+      await bookings.checklistToggle(bookingId, item.id, !item.checked);
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, checked: i.checked ? 0 : 1 } : i));
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  if (!items) return <p className="text-xs text-navy/40">Loading checklist…</p>;
+
+  const done = items.filter(i => i.checked).length;
+
+  return (
+    <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Pre-Job Checklist</p>
+        <span className="text-xs text-blue-500">{done}/{items.length} done</span>
+      </div>
+      <div className="space-y-1">
+        {items.map(item => (
+          <label key={item.id} className="flex items-center gap-2 cursor-pointer group">
+            <input type="checkbox" checked={!!item.checked} onChange={() => toggle(item)}
+              className="accent-blue-600 cursor-pointer flex-shrink-0" />
+            <span className={`text-xs ${item.checked ? 'line-through text-blue-400' : 'text-blue-800'}`}>{item.item}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Bookings() {
   const [list, setList] = useState([]);
@@ -29,9 +73,11 @@ export default function Bookings() {
   const [clientList, setClientList] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [expandedChecklist, setExpandedChecklist] = useState(null);
   const [form, setForm] = useState({
     client_id: '', date: '', time: '', status: 'Pending',
-    service_type: '', add_ons: [], total_price: '', notes: '', vehicle_ids: []
+    service_type: '', add_ons: [], total_price: '', notes: '',
+    vehicle_ids: [], heard_about: ''
   });
   const [saving, setSaving] = useState(false);
   const toast = useToast();
@@ -54,16 +100,15 @@ export default function Bookings() {
     const cid = e.target.value;
     setForm(f => ({ ...f, client_id: cid, vehicle_ids: [] }));
     if (cid) {
-      try {
-        setSelectedClient(await clientsApi.get(cid));
-      } catch { setSelectedClient(null); }
+      try { setSelectedClient(await clientsApi.get(cid)); }
+      catch { setSelectedClient(null); }
     } else {
       setSelectedClient(null);
     }
   }
 
   function resetForm() {
-    setForm({ client_id: '', date: '', time: '', status: 'Pending', service_type: '', add_ons: [], total_price: '', notes: '', vehicle_ids: [] });
+    setForm({ client_id: '', date: '', time: '', status: 'Pending', service_type: '', add_ons: [], total_price: '', notes: '', vehicle_ids: [], heard_about: '' });
     setSelectedClient(null);
     setEditingId(null);
   }
@@ -119,7 +164,7 @@ export default function Bookings() {
         { description: b.service_type, amount: b.total_price },
         ...addOns.map(a => ({ description: a, amount: 0 }))
       ];
-      const { id } = await invoicesApi.create({
+      await invoicesApi.create({
         booking_id: b.id, client_id: b.client_id,
         line_items: lineItems, subtotal: b.total_price, total: b.total_price
       });
@@ -135,7 +180,8 @@ export default function Bookings() {
       client_id: String(b.client_id), date: b.date, time: b.time || '',
       status: b.status, service_type: b.service_type || '',
       add_ons: JSON.parse(b.add_ons || '[]'), total_price: String(b.total_price),
-      notes: b.notes || '', vehicle_ids: b.vehicles?.map(v => v.id) || []
+      notes: b.notes || '', vehicle_ids: b.vehicles?.map(v => v.id) || [],
+      heard_about: b.heard_about || ''
     });
     setEditingId(b.id);
     clientsApi.get(b.client_id).then(setSelectedClient).catch(() => {});
@@ -180,6 +226,7 @@ export default function Bookings() {
                 <p className="text-sm text-navy/70">{b.service_type}</p>
                 {b.vehicle_names && <p className="text-xs text-navy/40 mt-0.5">{b.vehicle_names}</p>}
                 {b.notes && <p className="text-xs text-navy/40 mt-1 italic">{b.notes}</p>}
+                {b.heard_about && <p className="text-xs text-navy/30 mt-0.5">Found via: {b.heard_about}</p>}
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="font-semibold text-navy">{fmt(b.date)}{b.time ? ` · ${fmtTime(b.time)}` : ''}</p>
@@ -188,25 +235,42 @@ export default function Bookings() {
             </div>
 
             <div className="mt-3 pt-3 border-t border-navy/5 flex items-center gap-2 flex-wrap">
-              <select
-                value={b.status}
-                onChange={e => handleStatusChange(b.id, e.target.value, b)}
+              <select value={b.status} onChange={e => handleStatusChange(b.id, e.target.value, b)}
                 className="text-xs border border-navy/20 rounded px-2 py-1 text-navy focus:outline-none">
                 {STATUSES.map(s => <option key={s}>{s}</option>)}
               </select>
+
               <button onClick={() => startEdit(b)}
                 className="text-xs border border-navy/20 text-navy px-2 py-1 rounded hover:bg-navy/5 transition-colors">
                 Edit
               </button>
+
               <button onClick={() => handleGenerateInvoice(b)}
                 className="text-xs border border-gold/40 text-gold px-2 py-1 rounded hover:bg-gold/10 transition-colors">
                 Invoice
               </button>
+
+              {b.client_phone && (
+                <a href={`sms:${b.client_phone.replace(/\D/g, '')}&body=${smsBody(b)}`}
+                  className="text-xs border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
+                  Send Reminder
+                </a>
+              )}
+
+              {b.status === 'Confirmed' && (
+                <button onClick={() => setExpandedChecklist(expandedChecklist === b.id ? null : b.id)}
+                  className="text-xs border border-blue-200 text-blue-600 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
+                  {expandedChecklist === b.id ? 'Hide' : 'Checklist'}
+                </button>
+              )}
+
               <button onClick={() => handleDelete(b.id)}
                 className="text-xs border border-red-200 text-red-500 px-2 py-1 rounded hover:bg-red-50 transition-colors ml-auto">
                 Delete
               </button>
             </div>
+
+            {expandedChecklist === b.id && <Checklist bookingId={b.id} />}
           </div>
         ))}
       </div>
@@ -237,8 +301,7 @@ export default function Bookings() {
                         <input type="checkbox"
                           checked={form.vehicle_ids.includes(v.id)}
                           onChange={e => setForm(f => ({
-                            ...f,
-                            vehicle_ids: e.target.checked ? [...f.vehicle_ids, v.id] : f.vehicle_ids.filter(x => x !== v.id)
+                            ...f, vehicle_ids: e.target.checked ? [...f.vehicle_ids, v.id] : f.vehicle_ids.filter(x => x !== v.id)
                           }))} />
                         {v.make} {v.model} ({v.size})
                       </label>
@@ -281,6 +344,15 @@ export default function Bookings() {
                     {STATUSES.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-navy/50 mb-1">How Did They Hear About You?</label>
+                <select value={form.heard_about} onChange={e => setForm(f => ({ ...f, heard_about: e.target.value }))}
+                  className="w-full border border-navy/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/60">
+                  <option value="">— Select —</option>
+                  {HEARD_ABOUT_OPTIONS.map(o => <option key={o}>{o}</option>)}
+                </select>
               </div>
 
               <div>

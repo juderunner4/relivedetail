@@ -86,7 +86,55 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    category TEXT NOT NULL,
+    amount REAL NOT NULL DEFAULT 0,
+    description TEXT,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS mileage_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
+    date TEXT NOT NULL,
+    miles REAL NOT NULL DEFAULT 0,
+    from_address TEXT,
+    to_address TEXT,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS todos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL,
+    done INTEGER DEFAULT 0,
+    position INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS ad_spend (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    platform TEXT NOT NULL,
+    amount REAL NOT NULL DEFAULT 0,
+    date TEXT NOT NULL,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS job_checklist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+    item TEXT NOT NULL,
+    checked INTEGER DEFAULT 0
+  );
 `);
+
+// Safe migrations for columns added after initial deploy
+try { db.exec("ALTER TABLE bookings ADD COLUMN heard_about TEXT"); } catch(e) {}
 
 function seed() {
   const existing = db.prepare('SELECT id FROM clients WHERE name = ?').get('Roger Martin');
@@ -101,6 +149,17 @@ function seed() {
   insertSetting.run('business_email', 'juderunner4@gmail.com');
   insertSetting.run('business_address', 'Lynchburg, Virginia');
   insertSetting.run('owner_email', 'juderunner4@gmail.com');
+  insertSetting.run('notification_email', 'juderunner4@gmail.com');
+  insertSetting.run('monthly_revenue_goal', '2000');
+  insertSetting.run('monthly_job_goal', '15');
+  insertSetting.run('quick_links', JSON.stringify([
+    { label: 'Instagram', url: 'https://instagram.com' },
+    { label: 'Facebook', url: 'https://facebook.com' },
+    { label: 'Google Business', url: 'https://business.google.com' },
+    { label: 'Website', url: 'https://relivedetail.com' },
+    { label: 'Google Voice', url: 'https://voice.google.com' },
+    { label: 'Venmo', url: 'https://venmo.com/u/judetenorio' }
+  ]));
   insertSetting.run('pricing', JSON.stringify({
     exterior_sedan: 70, exterior_suv: 87,
     interior_sedan: 100, interior_suv: 125,

@@ -51,6 +51,8 @@ export const bookings = {
   create: (data) => json('/bookings', { method: 'POST', body: JSON.stringify(data) }),
   update: (id, data) => json(`/bookings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (id) => json(`/bookings/${id}`, { method: 'DELETE' }),
+  checklist: (id) => json(`/bookings/${id}/checklist`),
+  checklistToggle: (id, itemId, checked) => json(`/bookings/${id}/checklist/${itemId}`, { method: 'PUT', body: JSON.stringify({ checked }) }),
 };
 
 export const invoices = {
@@ -82,4 +84,35 @@ export const settings = {
   get: () => json('/settings'),
   update: (data) => json('/settings', { method: 'PUT', body: JSON.stringify(data) }),
   changePassword: (data) => json('/settings/change-password', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+export const expenses = {
+  list: (params = {}) => { const q = new URLSearchParams(params).toString(); return json(`/expenses${q ? `?${q}` : ''}`); },
+  summary: () => json('/expenses/summary'),
+  create: (data) => json('/expenses', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => json(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (id) => json(`/expenses/${id}`, { method: 'DELETE' }),
+};
+
+export const mileage = {
+  list: (params = {}) => { const q = new URLSearchParams(params).toString(); return json(`/mileage${q ? `?${q}` : ''}`); },
+  summary: () => json('/mileage/summary'),
+  create: (data) => json('/mileage', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => json(`/mileage/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (id) => json(`/mileage/${id}`, { method: 'DELETE' }),
+};
+
+export const todos = {
+  list: () => json('/todos'),
+  create: (data) => json('/todos', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => json(`/todos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (id) => json(`/todos/${id}`, { method: 'DELETE' }),
+};
+
+export const adspend = {
+  list: (params = {}) => { const q = new URLSearchParams(params).toString(); return json(`/adspend${q ? `?${q}` : ''}`); },
+  summary: () => json('/adspend/summary'),
+  create: (data) => json('/adspend', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => json(`/adspend/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  remove: (id) => json(`/adspend/${id}`, { method: 'DELETE' }),
 };

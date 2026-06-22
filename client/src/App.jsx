@@ -10,6 +10,9 @@ import Invoices from './pages/dashboard/Invoices';
 import Plans from './pages/dashboard/Plans';
 import Revenue from './pages/dashboard/Revenue';
 import Settings from './pages/dashboard/Settings';
+import Expenses from './pages/dashboard/Expenses';
+import Mileage from './pages/dashboard/Mileage';
+import Ads from './pages/dashboard/Ads';
 
 export default function App() {
   return (
@@ -25,6 +28,9 @@ export default function App() {
             <Route path="invoices" element={<Invoices />} />
             <Route path="plans" element={<Plans />} />
             <Route path="revenue" element={<Revenue />} />
+            <Route path="expenses" element={<Expenses />} />
+            <Route path="mileage" element={<Mileage />} />
+            <Route path="ads" element={<Ads />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Route>

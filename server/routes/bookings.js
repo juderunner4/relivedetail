@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const requireAuth = require('../middleware/auth');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
 
@@ -38,6 +39,23 @@ router.post('/public', (req, res) => {
 
   if (vehicleId) {
     db.prepare('INSERT INTO booking_vehicles (booking_id, vehicle_id) VALUES (?, ?)').run(bookingId, vehicleId);
+  }
+
+  // Email notification to owner
+  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    const notifEmail = db.prepare("SELECT value FROM settings WHERE key='notification_email'").get()?.value;
+    if (notifEmail) {
+      const { name: rName, phone: rPhone, email: rEmail, service_type: rSvc, date: rDate, time: rTime, notes: rNotes, heardAbout: rHeard } = req.body;
+      nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD }
+      }).sendMail({
+        from: `Relive Bookings <${process.env.GMAIL_USER}>`,
+        to: notifEmail,
+        subject: `New booking request from ${rName}`,
+        text: `New booking request received!\n\nName: ${rName}\nPhone: ${rPhone || '—'}\nEmail: ${rEmail || '—'}\nService: ${rSvc}\nDate: ${rDate || 'Flexible'}${rTime ? `\nTime: ${rTime}` : ''}\nHeard about us: ${rHeard || 'Not specified'}${rNotes ? `\nNotes: ${rNotes}` : ''}\n\nLog in to your dashboard to confirm.`
+      }).catch(() => {}); // fire-and-forget
+    }
   }
 
   res.status(201).json({ id: bookingId, message: 'Booking received' });
@@ -79,13 +97,13 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { client_id, date, time, service_type, add_ons, total_price, notes, vehicle_ids } = req.body;
+  const { client_id, date, time, service_type, add_ons, total_price, notes, vehicle_ids, heard_about } = req.body;
   if (!client_id || !date) return res.status(400).json({ error: 'client_id and date required' });
 
   const bookingId = db.prepare(
-    `INSERT INTO bookings (client_id, date, time, service_type, add_ons, total_price, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(client_id, date, time || '', service_type || '', JSON.stringify(add_ons || []), total_price || 0, notes || '').lastInsertRowid;
+    `INSERT INTO bookings (client_id, date, time, service_type, add_ons, total_price, notes, heard_about)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(client_id, date, time || '', service_type || '', JSON.stringify(add_ons || []), total_price || 0, notes || '', heard_about || '').lastInsertRowid;
 
   if (Array.isArray(vehicle_ids)) {
     const ins = db.prepare('INSERT INTO booking_vehicles (booking_id, vehicle_id) VALUES (?, ?)');
@@ -96,10 +114,10 @@ router.post('/', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-  const { date, time, status, service_type, add_ons, total_price, notes, vehicle_ids } = req.body;
+  const { date, time, status, service_type, add_ons, total_price, notes, vehicle_ids, heard_about } = req.body;
   db.prepare(
-    `UPDATE bookings SET date=?, time=?, status=?, service_type=?, add_ons=?, total_price=?, notes=? WHERE id=?`
-  ).run(date, time, status, service_type, JSON.stringify(add_ons || []), total_price, notes, req.params.id);
+    `UPDATE bookings SET date=?, time=?, status=?, service_type=?, add_ons=?, total_price=?, notes=?, heard_about=? WHERE id=?`
+  ).run(date, time, status, service_type, JSON.stringify(add_ons || []), total_price, notes, heard_about || '', req.params.id);
 
   if (Array.isArray(vehicle_ids)) {
     db.prepare('DELETE FROM booking_vehicles WHERE booking_id = ?').run(req.params.id);
@@ -122,6 +140,30 @@ router.put('/:id', (req, res) => {
 
 router.delete('/:id', (req, res) => {
   db.prepare('DELETE FROM bookings WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// Checklist routes for a booking
+router.get('/:id/checklist', (req, res) => {
+  const items = db.prepare('SELECT * FROM job_checklist WHERE booking_id = ? ORDER BY id ASC').all(req.params.id);
+  if (items.length === 0) {
+    // Seed default items on first fetch
+    const defaults = [
+      'Confirm water spigot access with client',
+      'Supplies loaded in vehicle',
+      'Address saved in Maps',
+      'Reminder sent to client',
+    ];
+    const ins = db.prepare('INSERT INTO job_checklist (booking_id, item, checked) VALUES (?, ?, 0)');
+    defaults.forEach(item => ins.run(req.params.id, item));
+    return res.json(db.prepare('SELECT * FROM job_checklist WHERE booking_id = ? ORDER BY id ASC').all(req.params.id));
+  }
+  res.json(items);
+});
+
+router.put('/:id/checklist/:itemId', (req, res) => {
+  db.prepare('UPDATE job_checklist SET checked = ? WHERE id = ? AND booking_id = ?')
+    .run(req.body.checked ? 1 : 0, req.params.itemId, req.params.id);
   res.json({ ok: true });
 });
 

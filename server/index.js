@@ -15,6 +15,10 @@ app.use('/api/invoices', require('./routes/invoices'));
 app.use('/api/plans', require('./routes/plans'));
 app.use('/api/revenue', require('./routes/revenue'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/mileage', require('./routes/mileage'));
+app.use('/api/todos', require('./routes/todos'));
+app.use('/api/adspend', require('./routes/adspend'));
 
 // Serve built React dashboard in production
 const clientDist = path.join(__dirname, '../client/dist');

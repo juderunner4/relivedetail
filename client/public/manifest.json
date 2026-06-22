@@ -1,0 +1,18 @@
+{
+  "name": "Relive Mobile Detailing",
+  "short_name": "Relive",
+  "description": "Business dashboard for Relive Mobile Detailing",
+  "start_url": "/dashboard/",
+  "scope": "/dashboard/",
+  "display": "standalone",
+  "background_color": "#1B2A4A",
+  "theme_color": "#C9A454",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

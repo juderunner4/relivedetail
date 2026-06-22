@@ -8,6 +8,10 @@ export default function Settings() {
   });
   const [pricing, setPricing] = useState({});
   const [pwForm, setPwForm] = useState({ current_password: '', new_password: '', confirm: '' });
+  const [goals, setGoals] = useState({ monthly_revenue_goal: '', monthly_job_goal: '' });
+  const [notifEmail, setNotifEmail] = useState('');
+  const [quickLinks, setQuickLinks] = useState([]);
+  const [newLink, setNewLink] = useState({ label: '', url: '' });
   const [saving, setSaving] = useState('');
   const toast = useToast();
 
@@ -21,6 +25,14 @@ export default function Settings() {
         owner_email: data.owner_email || '',
       });
       setPricing(data.pricing || {});
+      setGoals({
+        monthly_revenue_goal: data.monthly_revenue_goal || '',
+        monthly_job_goal: data.monthly_job_goal || '',
+      });
+      setNotifEmail(data.notification_email || '');
+      try {
+        setQuickLinks(typeof data.quick_links === 'string' ? JSON.parse(data.quick_links) : (data.quick_links || []));
+      } catch { setQuickLinks([]); }
     }).catch(e => toast(e.message, 'error'));
   }, []);
 
@@ -64,6 +76,44 @@ export default function Settings() {
     } finally {
       setSaving('');
     }
+  }
+
+  async function saveGoals(e) {
+    e.preventDefault();
+    setSaving('goals');
+    try {
+      await settingsApi.update({ monthly_revenue_goal: goals.monthly_revenue_goal, monthly_job_goal: goals.monthly_job_goal });
+      toast('Goals saved');
+    } catch (e) { toast(e.message, 'error'); } finally { setSaving(''); }
+  }
+
+  async function saveNotif(e) {
+    e.preventDefault();
+    setSaving('notif');
+    try {
+      await settingsApi.update({ notification_email: notifEmail });
+      toast('Notification email saved');
+    } catch (e) { toast(e.message, 'error'); } finally { setSaving(''); }
+  }
+
+  async function saveQuickLinks(links) {
+    try {
+      await settingsApi.update({ quick_links: JSON.stringify(links) });
+      setQuickLinks(links);
+      toast('Quick links saved');
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  function addLink(e) {
+    e.preventDefault();
+    if (!newLink.label.trim() || !newLink.url.trim()) return toast('Label and URL required', 'error');
+    const updated = [...quickLinks, { label: newLink.label.trim(), url: newLink.url.trim() }];
+    setNewLink({ label: '', url: '' });
+    saveQuickLinks(updated);
+  }
+
+  function removeLink(i) {
+    saveQuickLinks(quickLinks.filter((_, idx) => idx !== i));
   }
 
   const PRICING_LABELS = {
@@ -129,6 +179,71 @@ export default function Settings() {
           <button type="submit" disabled={saving === 'pricing'}
             className="bg-navy text-gold px-6 py-2 rounded-lg text-sm font-medium hover:bg-navy-light transition-colors disabled:opacity-50">
             {saving === 'pricing' ? 'Saving…' : 'Save Pricing'}
+          </button>
+        </form>
+      </section>
+
+      {/* Monthly Goals */}
+      <section className="bg-white rounded-xl border border-navy/10 p-6 shadow-sm">
+        <h2 className="font-display text-lg font-semibold text-navy mb-4">Monthly Goals</h2>
+        <form onSubmit={saveGoals} className="space-y-3 max-w-sm">
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-navy/50 mb-1">Revenue Goal ($)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-navy/40 text-sm">$</span>
+              <input type="number" min="0" step="1" placeholder="2000" value={goals.monthly_revenue_goal}
+                onChange={e => setGoals(g => ({ ...g, monthly_revenue_goal: e.target.value }))}
+                className="w-full border border-navy/20 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:border-gold/60" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-navy/50 mb-1">Job Count Goal</label>
+            <input type="number" min="0" step="1" placeholder="15" value={goals.monthly_job_goal}
+              onChange={e => setGoals(g => ({ ...g, monthly_job_goal: e.target.value }))}
+              className="w-full border border-navy/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/60" />
+          </div>
+          <button type="submit" disabled={saving === 'goals'}
+            className="bg-navy text-gold px-6 py-2 rounded-lg text-sm font-medium hover:bg-navy-light transition-colors disabled:opacity-50">
+            {saving === 'goals' ? 'Saving…' : 'Save Goals'}
+          </button>
+        </form>
+      </section>
+
+      {/* Quick Links */}
+      <section className="bg-white rounded-xl border border-navy/10 p-6 shadow-sm">
+        <h2 className="font-display text-lg font-semibold text-navy mb-4">Quick Links</h2>
+        <div className="space-y-2 mb-4">
+          {quickLinks.length === 0 && <p className="text-navy/40 text-sm">No links yet. Add your social profiles, tools, and websites below.</p>}
+          {quickLinks.map((link, i) => (
+            <div key={i} className="flex items-center gap-3 bg-cream/40 rounded-lg px-3 py-2">
+              <span className="text-sm font-medium text-navy flex-1">{link.label}</span>
+              <span className="text-xs text-navy/40 truncate max-w-[180px]">{link.url}</span>
+              <button onClick={() => removeLink(i)} className="text-navy/30 hover:text-red-500 transition-colors text-xs ml-2">✕</button>
+            </div>
+          ))}
+        </div>
+        <form onSubmit={addLink} className="flex gap-2">
+          <input placeholder="Label (e.g. Instagram)" value={newLink.label}
+            onChange={e => setNewLink(l => ({ ...l, label: e.target.value }))}
+            className="flex-1 border border-navy/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/60" />
+          <input placeholder="URL" value={newLink.url}
+            onChange={e => setNewLink(l => ({ ...l, url: e.target.value }))}
+            className="flex-1 border border-navy/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/60" />
+          <button type="submit" className="bg-navy text-gold px-4 py-2 rounded-lg text-sm font-medium">Add</button>
+        </form>
+      </section>
+
+      {/* Notifications */}
+      <section className="bg-white rounded-xl border border-navy/10 p-6 shadow-sm">
+        <h2 className="font-display text-lg font-semibold text-navy mb-2">Booking Notifications</h2>
+        <p className="text-xs text-navy/50 mb-4">When someone submits a booking request on your website, you'll get an email here. Requires Gmail credentials set in Railway env vars.</p>
+        <form onSubmit={saveNotif} className="flex gap-2 max-w-sm">
+          <input type="email" placeholder="your@email.com" value={notifEmail}
+            onChange={e => setNotifEmail(e.target.value)}
+            className="flex-1 border border-navy/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold/60" />
+          <button type="submit" disabled={saving === 'notif'}
+            className="bg-navy text-gold px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+            {saving === 'notif' ? 'Saving…' : 'Save'}
           </button>
         </form>
       </section>

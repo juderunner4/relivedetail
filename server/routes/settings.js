@@ -16,14 +16,21 @@ router.get('/', (req, res) => {
 });
 
 router.put('/', (req, res) => {
-  const { business_name, business_phone, business_email, business_address, owner_email, pricing } = req.body;
+  const {
+    business_name, business_phone, business_email, business_address, owner_email, pricing,
+    monthly_revenue_goal, monthly_job_goal, quick_links, notification_email
+  } = req.body;
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
-  if (business_name    !== undefined) upsert.run('business_name', business_name);
-  if (business_phone   !== undefined) upsert.run('business_phone', business_phone);
-  if (business_email   !== undefined) upsert.run('business_email', business_email);
-  if (business_address !== undefined) upsert.run('business_address', business_address);
-  if (owner_email      !== undefined) upsert.run('owner_email', owner_email);
-  if (pricing          !== undefined) upsert.run('pricing', JSON.stringify(pricing));
+  if (business_name         !== undefined) upsert.run('business_name', business_name);
+  if (business_phone        !== undefined) upsert.run('business_phone', business_phone);
+  if (business_email        !== undefined) upsert.run('business_email', business_email);
+  if (business_address      !== undefined) upsert.run('business_address', business_address);
+  if (owner_email           !== undefined) upsert.run('owner_email', owner_email);
+  if (pricing               !== undefined) upsert.run('pricing', JSON.stringify(pricing));
+  if (monthly_revenue_goal  !== undefined) upsert.run('monthly_revenue_goal', String(monthly_revenue_goal));
+  if (monthly_job_goal      !== undefined) upsert.run('monthly_job_goal', String(monthly_job_goal));
+  if (quick_links           !== undefined) upsert.run('quick_links', typeof quick_links === 'string' ? quick_links : JSON.stringify(quick_links));
+  if (notification_email    !== undefined) upsert.run('notification_email', notification_email);
   res.json({ ok: true });
 });
 

@@ -8,7 +8,12 @@ const NAV = [
   { to: '/invoices', label: 'Invoices', icon: '📄' },
   { to: '/plans',    label: 'Plans',    icon: '♻' },
   { to: '/revenue',  label: 'Revenue',  icon: '💰' },
-  { to: '/settings', label: 'Settings', icon: '⚙' },
+];
+
+const FINANCE_NAV = [
+  { to: '/expenses', label: 'Expenses', icon: '🧾' },
+  { to: '/mileage',  label: 'Mileage',  icon: '🚗' },
+  { to: '/ads',      label: 'Ads',      icon: '📣' },
 ];
 
 export default function Layout() {
@@ -48,6 +53,43 @@ export default function Layout() {
               {label}
             </NavLink>
           ))}
+
+          <div className="px-5 pt-4 pb-1">
+            <p className="text-[10px] uppercase tracking-widest text-cream/30 font-semibold">Finance</p>
+          </div>
+          {FINANCE_NAV.map(({ to, label, icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-5 py-2.5 text-sm transition-colors
+                 ${isActive
+                   ? 'bg-gold/20 text-gold border-r-2 border-gold'
+                   : 'text-cream/70 hover:text-cream hover:bg-white/5'
+                 }`
+              }
+            >
+              <span className="w-5 text-center text-base">{icon}</span>
+              {label}
+            </NavLink>
+          ))}
+
+          <div className="px-5 pt-4 pb-1">
+            <p className="text-[10px] uppercase tracking-widest text-cream/30 font-semibold">Account</p>
+          </div>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-5 py-2.5 text-sm transition-colors
+               ${isActive
+                 ? 'bg-gold/20 text-gold border-r-2 border-gold'
+                 : 'text-cream/70 hover:text-cream hover:bg-white/5'
+               }`
+            }
+          >
+            <span className="w-5 text-center text-base">⚙</span>
+            Settings
+          </NavLink>
         </nav>
 
         <div className="p-4 border-t border-white/10">
